@@ -38,10 +38,7 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
-    disk:
-      name: datum-storage
-      mountPath: /app/storage
-      sizeGB: 5
+
 
 databases:
   - name: datum-db
