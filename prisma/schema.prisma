@@ -1,0 +1,210 @@
+// Datum — schema.prisma
+// Run: npx prisma migrate dev --name init   (after setting DATABASE_URL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectRole {
+  CHAIRMAN_DIRECTOR
+  PROJECT_DIRECTOR
+  ARCHITECT_CONSULTANT
+  QS_COST_MANAGER
+  PROCUREMENT_MANAGER
+  SITE_ENGINEER
+  VENDOR_SUPPLIER
+  FACILITY_MANAGER
+}
+
+enum BoqStatus {
+  CONFIRMED
+  PENDING_INPUT
+  RATE_ONLY // "R.O." — contributes 0 to totals until confirmed, per AUR convention
+}
+
+enum ProcurementStage {
+  RFQ_TENDERING
+  QUOTATION_COMPARISON
+  PO_AWARDED
+  DELIVERED
+}
+
+enum FileKind {
+  DRAWING
+  BOQ_WORKBOOK
+  SPEC
+  PHOTO
+  OTHER
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  memberships  ProjectMember[]
+  uploadedFiles ProjectFile[]
+}
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String   // e.g. "AUR — Architecture Urbanism Research"
+  createdAt DateTime @default(now())
+
+  projects     Project[]
+  subscription Subscription?
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+
+  refCode        String   // e.g. "AUR-25-A12"
+  name           String   // e.g. "TIG World School, Garia"
+  client         String   // e.g. "Techno India Group"
+  location       String?
+  stage          String?  // maps loosely to the 7-step core workflow
+  createdAt      DateTime @default(now())
+
+  members      ProjectMember[]
+  boqItems     BoqItem[]
+  vendors      Vendor[]
+  quantityRows QuantityEntry[]
+  procurement  ProcurementItem[]
+  files        ProjectFile[]
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  userId    String
+  role      ProjectRole
+
+  project Project @relation(fields: [projectId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+}
+
+model BoqItem {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+
+  dsrRef      String    // "Chapter.Item, PP Page, V-Volume" or "R.O."
+  discipline  String
+  description String
+  unit        String
+  qty         Float     @default(0)
+  rate        Float     @default(0)
+  status      BoqStatus @default(PENDING_INPUT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vendor {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+
+  name     String
+  category String
+  contact  String?
+  email    String?
+  phone    String?
+  status   String   @default("Under Review")
+
+  createdAt DateTime @default(now())
+}
+
+model QuantityEntry {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+
+  element  String
+  location String
+  no       Float    @default(1)
+  l        Float?
+  b        Float?
+  h        Float?
+  unit     String
+
+  createdAt DateTime @default(now())
+}
+
+model ProcurementItem {
+  id        String            @id @default(cuid())
+  projectId String
+  project   Project           @relation(fields: [projectId], references: [id])
+
+  item   String
+  vendor String
+  stage  ProcurementStage    @default(RFQ_TENDERING)
+  value  Float               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  uploadedBy String
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+
+  kind         FileKind
+  originalName String
+  storageKey   String   // path or object key where the file lives
+  mimeType     String
+  sizeBytes    Int
+
+  // populated once a drawing preview has been rendered (see drawingPreview.js)
+  previewPageCount Int?
+  previewStorageDir String?
+
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id             String             @id @default(cuid())
+  organisationId String             @unique
+  organisation   Organisation       @relation(fields: [organisationId], references: [id])
+
+  plan           String             // "Studio" | "Practice" | "Enterprise"
+  status         SubscriptionStatus @default(TRIAL)
+  razorpayCustomerId String?
+
+  payments Payment[]
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?
+  amountPaise       Int
+  currency          String   @default("INR")
+  status            String   @default("created") // created | paid | failed
+  createdAt         DateTime @default(now())
+}

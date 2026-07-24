@@ -1,0 +1,45 @@
+version: "3.9"
+
+# Brings up Postgres + the API together. For a self-hosted box (a VPS,
+# an office server) this is the whole deploy:
+#   cp .env.example .env   # fill in JWT/Razorpay secrets
+#   docker compose up -d --build
+# The API will be on :4000; put nginx/Caddy in front of it for TLS.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: datum_user
+      POSTGRES_PASSWORD: datum_pass
+      POSTGRES_DB: datum_db
+    volumes:
+      - datum_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datum_user -d datum_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Overrides whatever DATABASE_URL is in .env so it always points at
+      # the 'db' service on the compose network, not localhost.
+      DATABASE_URL: postgresql://datum_user:datum_pass@db:5432/datum_db?schema=public
+      STORAGE_DIR: /app/storage
+    ports:
+      - "4000:4000"
+    volumes:
+      - datum_storage:/app/storage
+
+volumes:
+  datum_db_data:
+  datum_storage:

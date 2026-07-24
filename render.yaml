@@ -1,0 +1,50 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+# Deploy: push this repo to GitHub, then in Render: New > Blueprint, point
+# it at the repo. Render reads this file and provisions both services below.
+# You'll be prompted for the RAZORPAY_* secrets (marked sync: false) since
+# those shouldn't live in a committed file.
+
+services:
+  - type: web
+    name: datum-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: datum-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 30d
+      - key: CLIENT_ORIGIN
+        value: https://your-frontend-domain.example
+      - key: FILE_STORAGE_DRIVER
+        value: local
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: PDF_PREVIEW_DPI
+        value: "120"
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+    disk:
+      name: datum-storage
+      mountPath: /app/storage
+      sizeGB: 5
+
+databases:
+  - name: datum-db
+    plan: starter
+    databaseName: datum_db
+    user: datum_user
