@@ -13,8 +13,8 @@ const paymentsController = require('./controllers/payments.controller');
 
 const app = express();
 
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*', credentials: true }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Razorpay webhook needs the raw request body for signature verification —
