@@ -10,15 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install deps first so this layer caches across code-only changes
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
-
-# Generate the Prisma client against the real schema (needs network access
-# to binaries.prisma.sh at build time — any normal CI/host has this; only
-# Claude's sandboxed bash_tool does not, which is why this couldn't be
-# verified inside the chat itself)
-COPY prisma ./prisma
-RUN npx prisma generate
+   COPY package.json package-lock.json* ./
+   COPY prisma ./prisma
+   RUN npm install --omit=dev
 
 COPY . .
 
