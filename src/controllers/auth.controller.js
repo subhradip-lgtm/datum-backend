@@ -84,10 +84,10 @@ async function me(req, res) {
     where: { id: req.user.id },
     select: { id: true, name: true, email: true },
   });
-  const memberships = await prisma.projectMember.findMany({
-    where: { userId: req.user.id },
-    include: { project: { select: { id: true, name: true, refCode: true, client: true } } },
-  });
+const memberships = await prisma.projectMember.findMany({
+     where: { userId: req.user.id },
+     include: { project: { select: { id: true, name: true, refCode: true, client: true, organisationId: true } } },
+   });
   res.json({ user, projects: memberships.map((m) => ({ ...m.project, role: m.role })) });
 }
 
