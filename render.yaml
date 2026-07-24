@@ -9,7 +9,7 @@ services:
     name: datum-backend
     env: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -45,6 +45,6 @@ services:
 
 databases:
   - name: datum-db
-    plan: starter
+    plan: free
     databaseName: datum_db
     user: datum_user
