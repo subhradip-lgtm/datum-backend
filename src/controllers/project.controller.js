@@ -67,4 +67,19 @@ async function addMember(req, res) {
   res.status(201).json(membership);
 }
 
-module.exports = { listMyProjects, createProject, getProject, addMember };
+async function deleteProject(req, res) {
+     if (!['PROJECT_DIRECTOR', 'CHAIRMAN_DIRECTOR'].includes(req.projectRole)) {
+       return res.status(403).json({ error: 'Only a Project Director can delete a project' });
+     }
+     const { projectId } = req.params;
+     await prisma.boqItem.deleteMany({ where: { projectId } });
+     await prisma.vendor.deleteMany({ where: { projectId } });
+     await prisma.quantityEntry.deleteMany({ where: { projectId } });
+     await prisma.procurementItem.deleteMany({ where: { projectId } });
+     await prisma.projectFile.deleteMany({ where: { projectId } });
+     await prisma.projectMember.deleteMany({ where: { projectId } });
+     await prisma.project.delete({ where: { id: projectId } });
+     res.status(204).send();
+   }
+
+   module.exports = { listMyProjects, createProject, getProject, addMember, deleteProject };
