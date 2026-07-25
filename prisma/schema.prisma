@@ -24,7 +24,7 @@ enum ProjectRole {
 enum BoqStatus {
   CONFIRMED
   PENDING_INPUT
-  RATE_ONLY // "R.O." — contributes 0 to totals until confirmed, per AUR convention
+  RATE_ONLY
 }
 
 enum ProcurementStage {
@@ -58,14 +58,16 @@ model User {
 
   memberships  ProjectMember[]
   uploadedFiles ProjectFile[]
+  vendorNotes  VendorNote[]
 }
 
 model Organisation {
   id        String   @id @default(cuid())
-  name      String   // e.g. "AUR — Architecture Urbanism Research"
+  name      String
   createdAt DateTime @default(now())
 
   projects     Project[]
+  vendors      Vendor[]
   subscription Subscription?
 }
 
@@ -74,16 +76,16 @@ model Project {
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 
-  refCode        String   // e.g. "AUR-25-A12"
-  name           String   // e.g. "TIG World School, Garia"
-  client         String   // e.g. "Techno India Group"
+  refCode        String
+  name           String
+  client         String
   location       String?
-  stage          String?  // maps loosely to the 7-step core workflow
+  stage          String?
   createdAt      DateTime @default(now())
 
   members      ProjectMember[]
   boqItems     BoqItem[]
-  vendors      Vendor[]
+  vendorLinks  ProjectVendor[]
   quantityRows QuantityEntry[]
   procurement  ProcurementItem[]
   files        ProjectFile[]
@@ -106,7 +108,7 @@ model BoqItem {
   projectId   String
   project     Project   @relation(fields: [projectId], references: [id])
 
-  dsrRef      String    // "Chapter.Item, PP Page, V-Volume" or "R.O."
+  dsrRef      String
   discipline  String
   description String
   unit        String
@@ -119,18 +121,47 @@ model BoqItem {
 }
 
 model Vendor {
-  id        String   @id @default(cuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
+  id             String   @id @default(cuid())
+  organisationId String
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
 
-  name     String
-  category String
-  contact  String?
-  email    String?
-  phone    String?
-  status   String   @default("Under Review")
+  name      String
+  category  String
+  contact   String?
+  email     String?
+  phone     String?
+  status    String   @default("Under Review")
+  sponsored Boolean  @default(false)
 
   createdAt DateTime @default(now())
+
+  projectLinks ProjectVendor[]
+  notes        VendorNote[]
+
+  @@unique([organisationId, name])
+}
+
+model ProjectVendor {
+  id            String   @id @default(cuid())
+  projectId     String
+  vendorId      String
+  project       Project  @relation(fields: [projectId], references: [id])
+  vendor        Vendor   @relation(fields: [vendorId], references: [id])
+  roleOnProject String?
+  linkedAt      DateTime @default(now())
+
+  @@unique([projectId, vendorId])
+}
+
+model VendorNote {
+  id           String   @id @default(cuid())
+  vendorId     String
+  vendor       Vendor   @relation(fields: [vendorId], references: [id])
+  authorUserId String
+  author       User     @relation(fields: [authorUserId], references: [id])
+  note         String
+  rating       Int?
+  createdAt    DateTime @default(now())
 }
 
 model QuantityEntry {
@@ -172,11 +203,10 @@ model ProjectFile {
 
   kind         FileKind
   originalName String
-  storageKey   String   // path or object key where the file lives
+  storageKey   String
   mimeType     String
   sizeBytes    Int
 
-  // populated once a drawing preview has been rendered (see drawingPreview.js)
   previewPageCount Int?
   previewStorageDir String?
 
@@ -188,7 +218,7 @@ model Subscription {
   organisationId String             @unique
   organisation   Organisation       @relation(fields: [organisationId], references: [id])
 
-  plan           String             // "Studio" | "Practice" | "Enterprise"
+  plan           String
   status         SubscriptionStatus @default(TRIAL)
   razorpayCustomerId String?
 
@@ -205,6 +235,6 @@ model Payment {
   razorpayPaymentId String?
   amountPaise       Int
   currency          String   @default("INR")
-  status            String   @default("created") // created | paid | failed
+  status            String   @default("created")
   createdAt         DateTime @default(now())
 }
