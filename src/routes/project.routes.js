@@ -8,6 +8,7 @@ router.get('/', ctrl.listMyProjects);        // GET  /api/projects
 router.post('/', ctrl.createProject);        // POST /api/projects
 
 router.get('/:projectId', requireProjectAccess, ctrl.getProject);              // GET  /api/projects/:id
+router.delete('/:projectId', requireProjectAccess, ctrl.deleteProject);        // DELETE /api/projects/:id
 router.post('/:projectId/members', requireProjectAccess, ctrl.addMember);      // POST /api/projects/:id/members
 
 module.exports = router;
