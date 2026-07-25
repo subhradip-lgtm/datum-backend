@@ -23,4 +23,4 @@ EXPOSE 4000
 
 # Applies any pending migrations, then boots the API. Safe to run on every
 # deploy — `migrate deploy` is a no-op if the schema is already current.
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node src/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
