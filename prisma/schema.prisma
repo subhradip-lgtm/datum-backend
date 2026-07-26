@@ -24,7 +24,7 @@ enum ProjectRole {
 enum BoqStatus {
   CONFIRMED
   PENDING_INPUT
-  RATE_ONLY
+  RATE_ONLY // "R.O." — contributes 0 to totals until confirmed, per AUR convention
 }
 
 enum ProcurementStage {
@@ -42,6 +42,12 @@ enum FileKind {
   OTHER
 }
 
+enum DirectoryCategoryType {
+  CONSULTANT
+  CONTRACTOR
+  SUPPLIER
+}
+
 enum SubscriptionStatus {
   TRIAL
   ACTIVE
@@ -54,6 +60,7 @@ model User {
   name         String
   email        String   @unique
   passwordHash String
+  isPlatformAdmin Boolean @default(false) // controls who may add new directory categories
   createdAt    DateTime @default(now())
 
   memberships  ProjectMember[]
@@ -63,7 +70,7 @@ model User {
 
 model Organisation {
   id        String   @id @default(cuid())
-  name      String
+  name      String   // e.g. "AUR — Architecture Urbanism Research"
   createdAt DateTime @default(now())
 
   projects     Project[]
@@ -76,11 +83,11 @@ model Project {
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
 
-  refCode        String
-  name           String
-  client         String
+  refCode        String   // e.g. "AUR-25-A12"
+  name           String   // e.g. "TIG World School, Garia"
+  client         String   // e.g. "Techno India Group"
   location       String?
-  stage          String?
+  stage          String?  // maps loosely to the 7-step core workflow
   createdAt      DateTime @default(now())
 
   members      ProjectMember[]
@@ -108,7 +115,7 @@ model BoqItem {
   projectId   String
   project     Project   @relation(fields: [projectId], references: [id])
 
-  dsrRef      String
+  dsrRef      String    // "Chapter.Item, PP Page, V-Volume" or "R.O."
   discipline  String
   description String
   unit        String
@@ -120,18 +127,30 @@ model BoqItem {
   updatedAt DateTime @updatedAt
 }
 
+model DirectoryCategory {
+  id        String   @id @default(cuid())
+  type      DirectoryCategoryType
+  name      String
+  createdAt DateTime @default(now())
+
+  vendors   Vendor[]
+
+  @@unique([type, name])
+}
+
 model Vendor {
   id             String   @id @default(cuid())
   organisationId String
   organisation   Organisation @relation(fields: [organisationId], references: [id])
+  categoryId     String
+  category       DirectoryCategory @relation(fields: [categoryId], references: [id])
 
   name      String
-  category  String
   contact   String?
   email     String?
   phone     String?
-  status    String   @default("Under Review")
-  sponsored Boolean  @default(false)
+  status    String   @default("Under Review") // AUR's own approval status for this vendor
+  sponsored Boolean  @default(false)           // marketplace: vendor paid for visibility — kept visually distinct from `status`
 
   createdAt DateTime @default(now())
 
@@ -147,7 +166,7 @@ model ProjectVendor {
   vendorId      String
   project       Project  @relation(fields: [projectId], references: [id])
   vendor        Vendor   @relation(fields: [vendorId], references: [id])
-  roleOnProject String?
+  roleOnProject String?  // e.g. "Structural Consultant" — can differ from the vendor's general category
   linkedAt      DateTime @default(now())
 
   @@unique([projectId, vendorId])
@@ -160,7 +179,7 @@ model VendorNote {
   authorUserId String
   author       User     @relation(fields: [authorUserId], references: [id])
   note         String
-  rating       Int?
+  rating       Int?     // optional 1–5 internal rating
   createdAt    DateTime @default(now())
 }
 
@@ -203,10 +222,11 @@ model ProjectFile {
 
   kind         FileKind
   originalName String
-  storageKey   String
+  storageKey   String   // path or object key where the file lives
   mimeType     String
   sizeBytes    Int
 
+  // populated once a drawing preview has been rendered (see drawingPreview.js)
   previewPageCount Int?
   previewStorageDir String?
 
@@ -218,7 +238,7 @@ model Subscription {
   organisationId String             @unique
   organisation   Organisation       @relation(fields: [organisationId], references: [id])
 
-  plan           String
+  plan           String             // "Studio" | "Practice" | "Enterprise"
   status         SubscriptionStatus @default(TRIAL)
   razorpayCustomerId String?
 
@@ -235,6 +255,6 @@ model Payment {
   razorpayPaymentId String?
   amountPaise       Int
   currency          String   @default("INR")
-  status            String   @default("created")
+  status            String   @default("created") // created | paid | failed
   createdAt         DateTime @default(now())
 }
