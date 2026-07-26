@@ -44,4 +44,25 @@ function requireRole(...allowedRoles) {
   };
 }
 
-module.exports = { requireAuth, requireProjectAccess, requireRole };
+/**
+ * Organisation-scoped routes (like the vendor directory) don't have a
+ * dedicated OrganisationMember table yet — membership is inferred from
+ * belonging to at least one project within that organisation. Attaches
+ * req.orgRole as the "best" role found, for permission checks.
+ */
+async function requireOrgAccess(req, res, next) {
+  const { organisationId } = req.params;
+  if (!organisationId) return res.status(400).json({ error: 'organisationId is required in the route' });
+
+  const memberships = await prisma.projectMember.findMany({
+    where: { userId: req.user.id, project: { organisationId } },
+  });
+  if (!memberships.length) return res.status(403).json({ error: 'You are not a member of any project in this organisation' });
+
+  const priority = ['PROJECT_DIRECTOR', 'CHAIRMAN_DIRECTOR', 'PROCUREMENT_MANAGER', 'QS_COST_MANAGER', 'ARCHITECT_CONSULTANT', 'SITE_ENGINEER', 'VENDOR_SUPPLIER', 'FACILITY_MANAGER'];
+  memberships.sort((a, b) => priority.indexOf(a.role) - priority.indexOf(b.role));
+  req.orgRole = memberships[0].role;
+  next();
+}
+
+module.exports = { requireAuth, requireProjectAccess, requireOrgAccess, requireRole };
