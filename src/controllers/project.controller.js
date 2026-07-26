@@ -26,7 +26,6 @@ async function createProject(req, res) {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const project = await prisma.project.create({ data: parsed.data });
-  // creator becomes Project Director on their new project by default
   await prisma.projectMember.create({
     data: { projectId: project.id, userId: req.user.id, role: 'PROJECT_DIRECTOR' },
   });
@@ -47,8 +46,6 @@ const addMemberSchema = z.object({
   ]),
 });
 
-/** Assigns (or re-assigns) a teammate's role on this project. Only a
- *  Project Director or Chairman/Director may change access. */
 async function addMember(req, res) {
   if (!['PROJECT_DIRECTOR', 'CHAIRMAN_DIRECTOR'].includes(req.projectRole)) {
     return res.status(403).json({ error: 'Only a Project Director can manage project access' });
@@ -68,18 +65,18 @@ async function addMember(req, res) {
 }
 
 async function deleteProject(req, res) {
-     if (!['PROJECT_DIRECTOR', 'CHAIRMAN_DIRECTOR'].includes(req.projectRole)) {
-       return res.status(403).json({ error: 'Only a Project Director can delete a project' });
-     }
-     const { projectId } = req.params;
-     await prisma.boqItem.deleteMany({ where: { projectId } });
-     await prisma.vendor.deleteMany({ where: { projectId } });
-     await prisma.quantityEntry.deleteMany({ where: { projectId } });
-     await prisma.procurementItem.deleteMany({ where: { projectId } });
-     await prisma.projectFile.deleteMany({ where: { projectId } });
-     await prisma.projectMember.deleteMany({ where: { projectId } });
-     await prisma.project.delete({ where: { id: projectId } });
-     res.status(204).send();
-   }
+  if (!['PROJECT_DIRECTOR', 'CHAIRMAN_DIRECTOR'].includes(req.projectRole)) {
+    return res.status(403).json({ error: 'Only a Project Director can delete a project' });
+  }
+  const { projectId } = req.params;
+  await prisma.boqItem.deleteMany({ where: { projectId } });
+  await prisma.projectVendor.deleteMany({ where: { projectId } }); // unlink only — vendors belong to the org, not the project
+  await prisma.quantityEntry.deleteMany({ where: { projectId } });
+  await prisma.procurementItem.deleteMany({ where: { projectId } });
+  await prisma.projectFile.deleteMany({ where: { projectId } });
+  await prisma.projectMember.deleteMany({ where: { projectId } });
+  await prisma.project.delete({ where: { id: projectId } });
+  res.status(204).send();
+}
 
-   module.exports = { listMyProjects, createProject, getProject, addMember, deleteProject };
+module.exports = { listMyProjects, createProject, getProject, addMember, deleteProject };
