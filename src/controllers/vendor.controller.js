@@ -5,7 +5,7 @@ const WRITE_ROLES = ['PROJECT_DIRECTOR', 'PROCUREMENT_MANAGER'];
 
 const vendorSchema = z.object({
   name: z.string().min(1),
-  category: z.string(),
+  categoryId: z.string(),
   contact: z.string().optional(),
   email: z.string().optional(),
   phone: z.string().optional(),
@@ -18,7 +18,10 @@ const vendorSchema = z.object({
 async function listForOrganisation(req, res) {
   const vendors = await prisma.vendor.findMany({
     where: { organisationId: req.params.organisationId },
-    include: { notes: { include: { author: { select: { name: true } } }, orderBy: { createdAt: 'desc' } } },
+    include: {
+      category: true,
+      notes: { include: { author: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
+    },
     orderBy: { name: 'asc' },
   });
   res.json(vendors);
@@ -28,7 +31,7 @@ async function listForOrganisation(req, res) {
 async function listForProject(req, res) {
   const links = await prisma.projectVendor.findMany({
     where: { projectId: req.params.projectId },
-    include: { vendor: { include: { notes: true } } },
+    include: { vendor: { include: { category: true, notes: { include: { author: { select: { name: true } } } } } } },
   });
   res.json(links.map((l) => ({ ...l.vendor, roleOnProject: l.roleOnProject, linkedAt: l.linkedAt })));
 }
