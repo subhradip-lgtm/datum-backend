@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth.routes');
 const projectRoutes = require('./routes/project.routes');
 const boqRoutes = require('./routes/boq.routes');
 const vendorRoutes = require('./routes/vendor.routes');
+const directoryCategoryRoutes = require('./routes/directoryCategory.routes');
 const filesRoutes = require('./routes/files.routes');
 const paymentsRoutes = require('./routes/payments.routes');
 const paymentsController = require('./controllers/payments.controller');
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/projects/:projectId/boq', boqRoutes);
 app.use('/api', vendorRoutes);
+app.use('/api/directory/categories', directoryCategoryRoutes);
 app.use('/api/projects/:projectId/files', filesRoutes);
 app.use('/api/payments', paymentsRoutes);
 
