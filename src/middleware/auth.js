@@ -65,4 +65,15 @@ async function requireOrgAccess(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireProjectAccess, requireOrgAccess, requireRole };
+/** Restricts a route to the platform owner only (isPlatformAdmin on User) —
+ *  used for managing the shared directory-category taxonomy, which is
+ *  intentionally NOT delegated to individual organisations. */
+async function requirePlatformAdmin(req, res, next) {
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user || !user.isPlatformAdmin) {
+    return res.status(403).json({ error: 'Only the platform owner can manage directory categories' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireProjectAccess, requireOrgAccess, requireRole, requirePlatformAdmin };
