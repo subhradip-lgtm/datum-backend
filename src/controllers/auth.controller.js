@@ -80,9 +80,9 @@ async function refresh(req, res) {
 }
 
 async function me(req, res) {
-  const user = await prisma.user.findUnique({
+const user = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, isPlatformAdmin: true },
   });
 const memberships = await prisma.projectMember.findMany({
      where: { userId: req.user.id },
